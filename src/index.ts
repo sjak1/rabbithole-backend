@@ -9,7 +9,11 @@ import { clerkMiddleware, requireAuth } from '@clerk/express';
 const app = express();
 
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+  origin: [
+    process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+    'https://rabbithole-henna.vercel.app',
+    'https://rabbithole-hzazwje1g-0xadityaksjs-projects.vercel.app'
+  ],
   credentials: true
 }));
 app.use(express.json());
