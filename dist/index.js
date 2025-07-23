@@ -67,7 +67,9 @@ app.post('/parent/:branchId', (0, express_2.requireAuth)(), chatController_1.set
 app.post('/title/:branchId', (0, express_2.requireAuth)(), chatController_1.setBranchTitle);
 app.post('/title/generate/:branchId', (0, express_2.requireAuth)(), chatController_1.generateBranchTitle);
 app.post('/api/llm', (0, express_2.requireAuth)(), chatController_1.getLLMResponse);
-app.listen(4000, () => {
-    console.log("Express server is running on port 4000");
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
+    console.log(`Express server is running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 exports.default = app;
