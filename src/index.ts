@@ -14,7 +14,9 @@ app.use(cors({
     'https://rabbithole-henna.vercel.app',
     'https://rabbithole-hzazwje1g-0xadityaksjs-projects.vercel.app'
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(clerkMiddleware());
