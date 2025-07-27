@@ -98,7 +98,7 @@ export const getBranchParent = async (req: Request, res: Response): Promise<void
 }
 
 export const deleteBranch = async(req:Request, res:Response): Promise<void> => {
-    const branchId = req.params.branchId
+    const branchId = req.params.id
     const deleteBranch = await prisma.branch.delete({
       where: {
         id : branchId
