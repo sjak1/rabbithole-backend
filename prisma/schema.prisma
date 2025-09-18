@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,25 +8,27 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  image     String?
-  branches  Branch[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  credits   Float    @default(0.05)
+  id               String   @id @default(uuid())
+  email            String   @unique
+  name             String?
+  image            String?
+  branches         Branch[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  credits          Float    @default(0.05)
+  dailyResetDate   DateTime @default(now())
+  dailyCreditsUsed Float    @default(0)
 }
 
 model Branch {
   id        String   @id @default(uuid())
   name      String
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  messages  Json     @default("[]")
-  parentId  String?
-  parent    Branch?  @relation("BranchChildren", fields: [parentId], references: [id], onDelete: Cascade)
-  children  Branch[] @relation("BranchChildren")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  parentId  String?
+  messages  Json     @default("[]")
+  parent    Branch?  @relation("BranchChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Branch[] @relation("BranchChildren")
+  user      User     @relation(fields: [userId], references: [id])
 }

@@ -134,6 +134,43 @@ export const generateBranchTitle = async (req: Request, res: Response): Promise<
             return;
         }
 
+        const user = await prisma.user.findUnique({ 
+            where: { id: userId },
+            select: { id: true, credits: true, dailyResetDate: true, dailyCreditsUsed: true }
+        });
+        
+        if (!user) {
+            res.status(404).json({ error: "User not found" });
+            return;
+        }
+
+        if (user.credits <= 0) {
+            res.status(403).json({ error: "Out of credits" });
+            return;
+        }
+
+        const dailyLimit = 0.05 / 30;
+        const now = new Date();
+
+        if (!user.dailyResetDate) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: { dailyCreditsUsed: 0, dailyResetDate: now }
+            });
+        } else {
+            const hoursSinceReset = (now.getTime() - user.dailyResetDate.getTime()) / (1000 * 60 * 60);
+            
+            if (hoursSinceReset >= 24) {
+                await prisma.user.update({
+                    where: { id: userId },
+                    data: { dailyCreditsUsed: 0, dailyResetDate: now }
+                });
+            } else if (user.dailyCreditsUsed >= dailyLimit) {
+                res.status(429).json({ error: "Daily limit reached. Try again tomorrow." });
+                return;
+            }
+        }
+
         const branch = await prisma.branch.findUnique({
             where: { id: branchId },
             select: { messages: true }
@@ -166,7 +203,10 @@ export const generateBranchTitle = async (req: Request, res: Response): Promise<
 
         await prisma.user.update({
             where: { id: userId },
-            data: { credits: { decrement: cost } },
+            data: { 
+                credits: { decrement: cost },
+                dailyCreditsUsed: { increment: cost }
+            },
         });
 
         const updatedBranch = await prisma.branch.update({
@@ -176,10 +216,11 @@ export const generateBranchTitle = async (req: Request, res: Response): Promise<
 
         const updatedUser = await prisma.user.findUnique({
             where: { id: userId },
-            select: { credits: true }
+            select: { credits: true, dailyCreditsUsed: true }
         });
 
-        res.json({ updatedBranch, remainingCredits: updatedUser?.credits });
+        const dailyRemaining = dailyLimit - (updatedUser?.dailyCreditsUsed ?? 0);
+        res.json({ updatedBranch, remainingCredits: Math.max(0, dailyRemaining) });
 
     } catch (err) {
         console.error('Error generating branch title:', err);
@@ -298,7 +339,10 @@ export const getLLMResponse = async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await prisma.user.findUnique({ 
+    where: { id: userId },
+    select: { id: true, credits: true, dailyResetDate: true, dailyCreditsUsed: true }
+  });
   
   if (!user) {
     res.status(404).json({ error: "User not found" });
@@ -308,6 +352,28 @@ export const getLLMResponse = async (req: Request, res: Response): Promise<void>
   if (user.credits <= 0) {
     res.status(403).json({ error: "Out of credits" });
     return;
+  }
+
+  const dailyLimit = 0.05 / 30;
+  const now = new Date();
+
+  if (!user.dailyResetDate) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { dailyCreditsUsed: 0, dailyResetDate: now }
+    });
+  } else {
+    const hoursSinceReset = (now.getTime() - user.dailyResetDate.getTime()) / (1000 * 60 * 60);
+    
+    if (hoursSinceReset >= 24) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { dailyCreditsUsed: 0, dailyResetDate: now }
+      });
+    } else if (user.dailyCreditsUsed >= dailyLimit) {
+      res.status(429).json({ error: "Daily limit reached. Try again tomorrow." });
+      return;
+    }
   }
 
   try {
@@ -357,18 +423,19 @@ export const getLLMResponse = async (req: Request, res: Response): Promise<void>
       where: { id: userId },
       data: {
         credits: { decrement: cost },
+        dailyCreditsUsed: { increment: cost },
       },
     });
 
     const updatedUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { credits: true }
+      select: { credits: true, dailyCreditsUsed: true }
     });
 
-    // Send final message with credits
+    const dailyRemaining = dailyLimit - (updatedUser?.dailyCreditsUsed ?? 0);
     res.write(`data: ${JSON.stringify({ 
       type: 'complete', 
-      credits: updatedUser?.credits ?? 0,
+      credits: Math.max(0, dailyRemaining),
       fullContent 
     })}\n\n`);
     
